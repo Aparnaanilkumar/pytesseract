@@ -1,0 +1,70 @@
+
+from curses.textpad import rectangle
+from PIL import Image
+import pytesseract
+import argparse
+import cv2
+import os
+import shutil
+# construct the argument parse and parse the arguments
+ap = argparse.ArgumentParser()
+ap.add_argument("-i", "--image", required=True,
+	help="/home/v-labsai-aparna/Downloads/Assignment_folders/input_image")
+ap.add_argument("-p", "--preprocess", type=str, default="thresh",
+	help="type of preprocessing to be done")
+args = vars(ap.parse_args())
+
+# load the example image and convert it to grayscale
+image = cv2.imread(args["image"])
+gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+# check to see if we should apply thresholding to preprocess the
+# image
+if args["preprocess"] == "thresh":
+	gray = cv2.threshold(gray, 0, 255,
+		cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+# make a check to see if median blurring should be done to remove
+# noise
+elif args["preprocess"] == "blur":
+	gray = cv2.medianBlur(gray, 3)
+# write the grayscale image to disk as a temporary file so we can
+# apply OCR to it
+filename = "{}.png".format(os.getpid())
+cv2.imwrite(filename, gray)
+
+#adding rectangles
+
+from pytesseract import Output
+d = pytesseract.image_to_data(image, output_type=Output.DICT)
+n_boxes = len(d['level'])
+for i in range(n_boxes):
+    if(d['text'][i] != ""):
+        (x, y, w, h) = (d['left'][i], d['top'][i], d['width'][i], d['height'][i])
+        cv2.rectangle(image, (x, y), (x + w, y + h), (0,0,255), 2)
+a = (d['conf'])		
+
+print(a)
+
+# Using cv2.putText()
+
+for i in range(n_boxes):
+    if(d['text'][i] != ""):
+        (x, y, w, h) = (d['left'][i], d['top'][i], d['width'][i], d['height'][i])
+    # for j in (a):
+    cv2.putText(image,
+    text = str(a[i]),
+    org = (x + w, y + h),
+    fontFace = cv2.FONT_ITALIC,
+    fontScale = .60,
+    color = (255,0,0),
+    thickness = 2)
+		
+# load the image as a PIL/Pillow image, apply OCR
+# deleting the temporary file	
+ 
+text = pytesseract.image_to_string(Image.open(filename))
+os.remove(filename)
+print(text)
+
+ # show the output images
+cv2.imshow("Image", image)
+cv2.waitKey(0)
